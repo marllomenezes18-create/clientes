@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV Core | Database Live</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #09090b; color: #a1a1aa; }
+        .glass { background: rgba(24, 24, 27, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid #27272a; }
+        .status-pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="sticky top-0 z-50 glass px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="h-10 w-10 bg-gradient-to-tr from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <i class="fas fa-database text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-white font-bold tracking-tight text-lg">AMIGOSARU <span class="text-blue-500">PRO</span></h1>
+                    <div class="flex items-center gap-2">
+                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 status-pulse"></span>
+                        <p class="text-[10px] uppercase font-bold text-zinc-500">Firebase Cloud Connected</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="relative w-full md:w-96">
+                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600"></i>
+                <input type="text" id="mainSearch" onkeyup="instantFilter()" 
+                    placeholder="Filtrar por MAC, Usuário ou Node..." 
+                    class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-2.5 pl-12 pr-4 text-sm text-white focus:ring-2 focus:ring-blue-500/40 outline-none transition-all">
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-6">
+        
+        <!-- Server Monitoring -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10" id="statsGrid">
+            <!-- Widgets gerados dinamicamente -->
+        </div>
+
+        <!-- Main Database Table -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-3xl shadow-2xl overflow-hidden">
+            <div class="p-6 border-b border-zinc-800 bg-zinc-900/50 flex flex-wrap justify-between items-center gap-4">
+                <div>
+                    <h3 class="text-white font-bold">Base de Dados de Clientes</h3>
+                    <p class="text-xs">Sincronizado com amigosaru-6a228</p>
+                </div>
+                <div class="flex gap-2">
+                    <button class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition">
+                        <i class="fas fa-download mr-2"></i>Exportar
+                    </button>
+                    <button onclick="alert('Integre a função addDoc do Firebase aqui!')" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-lg shadow-blue-600/20">
+                        <i class="fas fa-plus mr-2"></i>Novo Registro
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="text-[10px] uppercase tracking-widest text-zinc-500 bg-zinc-950/40">
+                            <th class="px-6 py-4">Status</th>
+                            <th class="px-6 py-4">Cliente / Identificador</th>
+                            <th class="px-6 py-4 text-center">Acesso Rápido</th>
+                            <th class="px-6 py-4">Node Servidor</th>
+                            <th class="px-6 py-4">Observação</th>
+                            <th class="px-6 py-4 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dbRows" class="divide-y divide-zinc-800/50">
+                        <!-- Linhas injetadas pelo Firebase -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Firebase SDK Modules -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, query } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCsqUeXLDpUhxvHxXOC19iRoQhPuYOGpFw",
+            authDomain: "amigosaru-6a228.firebaseapp.com",
+            projectId: "amigosaru-6a228",
+            storageBucket: "amigosaru-6a228.firebasestorage.app",
+            messagingSenderId: "1024825583351",
+            appId: "1:1024825583351:web:4abf29baac04b44e6c55f2"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Função para carregar dados reais
+        async function loadDashboard() {
+            const rowContainer = document.getElementById('dbRows');
+            const statsGrid = document.getElementById('statsGrid');
+            
+            // Aqui você deve ter coleções chamadas 'clientes' e 'servidores' no Firestore
+            // Exemplo de estrutura de dados local para visualização imediata:
+            const demoClientes = [
+                { nome: "João Paulo", user: "jp_2026", mac: "00:1B:44:11:33:FF", servidor: "NODE-BRASIL-01", status: "online", obs: "Vence em 15 dias" },
+                { nome: "Equipe Suporte", user: "admin_test", mac: "FF:FF:FF:FF:FF:FF", servidor: "NODE-USA-02", status: "offline", obs: "Acesso interno" }
+            ];
+
+            // Renderizando Clientes
+            rowContainer.innerHTML = demoClientes.map(c => `
+                <tr class="hover:bg-zinc-800/20 transition group">
+                    <td class="px-6 py-4">
+                        <span class="flex h-2 w-2 rounded-full ${c.status === 'online' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-zinc-700'}"></span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-white font-semibold text-sm">${c.nome}</div>
+                        <div class="text-[10px] font-mono text-zinc-500">${c.mac}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex justify-center gap-2">
+                            <button onclick="copyToClipboard('${c.user}')" class="h-8 w-8 flex items-center justify-center rounded-lg bg-zinc-800 hover:bg-blue-600 transition text-xs" title="Copiar Usuário">
+                                <i class="fas fa-user text-[10px]"></i>
+                            </button>
+                            <button onclick="copyToClipboard('${c.mac}')" class="h-8 w-8 flex items-center justify-center rounded-lg bg-zinc-800 hover:bg-indigo-600 transition text-xs" title="Copiar MAC">
+                                <i class="fas fa-microchip text-[10px]"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2.5 py-1 rounded-md uppercase tracking-wider">
+                            ${c.servidor}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-xs italic text-zinc-500">${c.obs || '-'}</td>
+                    <td class="px-6 py-4 text-right">
+                        <button class="text-zinc-600 hover:text-white transition"><i class="fas fa-edit text-sm"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+
+            // Widgets de Estatísticas
+            const stats = [
+                { label: "Clientes Ativos", val: demoClientes.length, color: "blue" },
+                { label: "Servidores Up", val: "2", color: "emerald" },
+                { label: "Alertas MAC", val: "0", color: "amber" },
+                { label: "Carga Total", val: "12%", color: "purple" }
+            ];
+
+            statsGrid.innerHTML = stats.map(s => `
+                <div class="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1">${s.label}</p>
+                    <h3 class="text-2xl font-bold text-white">${s.val}</h3>
+                </div>
+            `).join('');
+        }
+
+        window.copyToClipboard = (text) => {
+            navigator.clipboard.writeText(text);
+            const toast = document.createElement('div');
+            toast.className = "fixed bottom-10 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-6 py-3 rounded-2xl text-sm font-bold shadow-2xl z-[100] animate-bounce";
+            toast.innerText = "Copiado: " + text;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        };
+
+        window.instantFilter = () => {
+            const q = document.getElementById('mainSearch').value.toLowerCase();
+            document.querySelectorAll('#dbRows tr').forEach(r => {
+                r.style.display = r.innerText.toLowerCase().includes(q) ? '' : 'none';
+            });
+        };
+
+        loadDashboard();
+    </script>
+</body>
+</html>
