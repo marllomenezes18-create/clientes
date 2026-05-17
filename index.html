@@ -1,31 +1,94 @@
-# 🚀 Amigosaru IPTV Manager Pro
+<script type="module">
+    // Importações necessárias do SDK do Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-Sistema de gerenciamento de servidores e clientes IPTV integrado com **Firebase Firestore**. Design moderno, responsivo e com atualizações em tempo real.
+    // Suas credenciais AMIGOSARU
+    const firebaseConfig = {
+        apiKey: "AIzaSyCsqUeXLDpUhxvHxXOC19iRoQhPuYOGpFw",
+        authDomain: "amigosaru-6a228.firebaseapp.com",
+        projectId: "amigosaru-6a228",
+        storageBucket: "amigosaru-6a228.firebasestorage.app",
+        messagingSenderId: "1024825583351",
+        appId: "1:1024825583351:web:4abf29baac04b44e6c55f2"
+    };
 
-## 🛠️ Tecnologias Utilizadas
-*   **HTML5 / CSS3**
-*   **Tailwind CSS** (Estilização via CDN)
-*   **JavaScript (ES6+)**
-*   **Firebase 10** (Banco de dados NoSQL em tempo real)
-*   **Font Awesome** (Ícones)
+    // Inicialização
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-## ✨ Funcionalidades
-- [x] Dashboard com estatísticas automáticas.
-- [x] Monitoramento de status de servidores (Online/Offline).
-- [x] Cadastro, listagem e exclusão de clientes em tempo real.
-- [x] Filtro de pesquisa inteligente.
-- [x] Botões de cópia rápida para MAC e Usuário.
-- [x] Layout totalmente responsivo (Mobile/Desktop).
+    // --- FUNÇÃO PARA ADICIONAR CLIENTE (addDoc) ---
+    const form = document.getElementById('formCliente');
+    
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault(); // Impede a página de recarregar
 
-## 🚀 Como usar
-1. Clone este repositório.
-2. Abra o arquivo `index.html` no seu navegador.
-3. Certifique-se de configurar suas chaves do Firebase no bloco `const firebaseConfig`.
+        // Pega os valores dos campos do formulário
+        const novoCliente = {
+            nome: document.getElementById('nome').value,
+            user: document.getElementById('user').value,
+            mac: document.getElementById('mac').value,
+            servidor: document.getElementById('servidor').value,
+            status: document.getElementById('status').value,
+            criadoEm: serverTimestamp() // Adiciona data de criação automática
+        };
 
-## 📌 Requisitos do Banco de Dados (Firestore)
-Crie uma coleção chamada `clientes` com os seguintes campos:
-- `nome`: string
-- `user`: string
-- `mac`: string
-- `servidor`: string
-- `status`: string ("online" ou "offline")
+        try {
+            // ENVIA PARA O FIRESTORE
+            const docRef = await addDoc(collection(db, "clientes"), novoCliente);
+            
+            console.log("Cliente adicionado com ID: ", docRef.id);
+            
+            // Sucesso: Limpa o formulário e fecha o modal
+            form.reset();
+            toggleModal();
+            alert("✅ Cliente cadastrado com sucesso!");
+            
+        } catch (error) {
+            console.error("Erro ao adicionar documento: ", error);
+            alert("❌ Erro ao salvar: " + error.message);
+        }
+    });
+
+    // --- LEITURA EM TEMPO REAL ---
+    function monitorarDados() {
+        onSnapshot(collection(db, "clientes"), (snapshot) => {
+            const rowContainer = document.getElementById('dbRows');
+            let html = '';
+            
+            snapshot.forEach((doc) => {
+                const c = doc.data();
+                html += `
+                    <tr class="hover:bg-zinc-800/20 border-b border-zinc-800/50">
+                        <td class="px-6 py-4">
+                            <span class="flex h-2 w-2 rounded-full ${c.status === 'online' ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-white font-bold">${c.nome}</div>
+                            <div class="text-[10px] text-zinc-500 font-mono">${c.mac}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                           <button onclick="copyItem('${c.user}')" class="bg-zinc-800 p-2 rounded">
+                                <i class="fas fa-copy"></i>
+                           </button>
+                        </td>
+                        <td class="px-6 py-4 text-blue-400 text-xs font-bold">${c.servidor}</td>
+                        <td class="px-6 py-4 text-right">
+                             <button class="text-zinc-600 hover:text-white"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+            rowContainer.innerHTML = html;
+        });
+    }
+
+    // Funções auxiliares no escopo global
+    window.toggleModal = () => document.getElementById('modalCadastro').classList.toggle('hidden');
+    window.copyItem = (val) => {
+        navigator.clipboard.writeText(val);
+        alert("Copiado!");
+    };
+
+    monitorarDados();
+</script>
