@@ -3,48 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Amigosaru | Gestão Simples</title>
+    <title>Amigosaru | Gestão Completa</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { background-color: #09090b; font-family: 'Inter', sans-serif; color: #f4f4f5; }
         input { background-color: #18181b !important; border: 1px solid #27272a !important; color: white; }
-        .card { background-color: #18181b; border: 1px solid #27272a; }
+        .card { background-color: #18181b; border: 1px solid #27272a; transition: all 0.2s; }
+        .card:hover { border-color: #3f3f46; }
     </style>
 </head>
 <body class="p-4 md:p-10">
 
-    <div class="max-w-xl mx-auto">
+    <div class="max-w-2xl mx-auto">
         
-        <!-- Bloco de Cadastro -->
+        <!-- Bloco de Cadastro / Edição -->
         <div class="card p-6 rounded-2xl mb-8 shadow-xl">
-            <h2 class="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-4">Novo Cadastro</h2>
+            <h2 id="tituloForm" class="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-4">Novo Cadastro</h2>
             <div class="flex flex-col gap-3">
+                <input type="hidden" id="idCliente">
                 <input type="text" id="nomeCliente" placeholder="Nome do Cliente" class="p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-600">
-                <input type="text" id="nomeServidor" placeholder="Nome do Servidor (Ex: Star, VIP, Gold)" class="p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-600">
-                <button onclick="salvarCliente()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition">
-                    Salvar no Sistema
-                </button>
+                <input type="text" id="nomeServidor" placeholder="Nome do Servidor" class="p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-600">
+                <div class="flex gap-2">
+                    <button onclick="salvarCliente()" id="btnSalvar" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition">
+                        Salvar Cliente
+                    </button>
+                    <button onclick="cancelarEdicao()" id="btnCancelar" class="hidden flex-1 bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-3 rounded-xl transition">
+                        Cancelar
+                    </button>
+                </div>
             </div>
         </div>
 
         <!-- Barra de Pesquisa -->
         <div class="relative mb-6">
             <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"></i>
-            <input type="text" id="busca" onkeyup="filtrar()" placeholder="Buscar por cliente ou servidor..." 
+            <input type="text" id="busca" onkeyup="filtrar()" placeholder="Buscar cliente ou servidor..." 
                 class="w-full p-3 pl-12 rounded-xl outline-none border border-zinc-800">
         </div>
 
         <!-- Lista de Resultados -->
-        <div id="lista" class="space-y-3">
-            <!-- Os dados aparecem aqui -->
-        </div>
+        <div id="lista" class="space-y-3"></div>
 
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCsqUeXLDpUhxvHxXOC19iRoQhPuYOGpFw",
@@ -58,52 +63,88 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // FUNÇÃO PARA SALVAR
+        // SALVAR OU ATUALIZAR
         window.salvarCliente = async () => {
+            const id = document.getElementById('idCliente').value;
             const nome = document.getElementById('nomeCliente').value;
             const servidor = document.getElementById('nomeServidor').value;
 
-            if (!nome || !servidor) {
-                alert("Preencha o nome e o servidor!");
-                return;
-            }
+            if (!nome || !servidor) return alert("Preencha os campos!");
 
             try {
-                await addDoc(collection(db, "clientes"), {
-                    nome: nome,
-                    servidor: servidor,
-                    data: new Date()
-                });
+                if (id) {
+                    await updateDoc(doc(db, "clientes", id), { nome, servidor });
+                    cancelarEdicao();
+                } else {
+                    await addDoc(collection(db, "clientes"), { nome, servidor, data: new Date() });
+                }
                 document.getElementById('nomeCliente').value = '';
                 document.getElementById('nomeServidor').value = '';
-                alert("Cadastrado!");
-            } catch (e) { alert("Erro ao salvar"); }
+            } catch (e) { alert("Erro na operação"); }
         };
 
-        // FUNÇÃO PARA LER EM TEMPO REAL
+        // DELETAR
+        window.remover = async (id) => {
+            if (confirm("Deseja realmente excluir este cliente?")) {
+                await deleteDoc(doc(db, "clientes", id));
+            }
+        };
+
+        // PREPARAR EDIÇÃO
+        window.prepararEdicao = (id, nome, servidor) => {
+            document.getElementById('idCliente').value = id;
+            document.getElementById('nomeCliente').value = nome;
+            document.getElementById('nomeServidor').value = servidor;
+            document.getElementById('tituloForm').innerText = "Editando Cliente";
+            document.getElementById('btnSalvar').innerText = "Atualizar Cadastro";
+            document.getElementById('btnCancelar').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        };
+
+        window.cancelarEdicao = () => {
+            document.getElementById('idCliente').value = '';
+            document.getElementById('nomeCliente').value = '';
+            document.getElementById('nomeServidor').value = '';
+            document.getElementById('tituloForm').innerText = "Novo Cadastro";
+            document.getElementById('btnSalvar').innerText = "Salvar Cliente";
+            document.getElementById('btnCancelar').classList.add('hidden');
+        };
+
+        // LISTAGEM EM TEMPO REAL
         onSnapshot(collection(db, "clientes"), (snapshot) => {
             const container = document.getElementById('lista');
             container.innerHTML = '';
             
-            snapshot.forEach((doc) => {
-                const item = doc.data();
+            snapshot.forEach((snap) => {
+                const item = snap.data();
+                const id = snap.id;
+                // Previne o "undefined" usando um valor padrão
+                const nomeExibir = item.nome || "Sem Nome";
+                const servidorExibir = item.servidor || "Sem Servidor";
+
                 container.innerHTML += `
-                    <div class="card p-4 rounded-xl flex justify-between items-center animate-fade-in">
-                        <span class="font-bold text-white">${item.nome}</span>
-                        <span class="text-xs bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full border border-blue-600/30 font-bold uppercase">
-                            ${item.servidor}
-                        </span>
+                    <div class="card p-4 rounded-xl flex justify-between items-center">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-white">${nomeExibir}</span>
+                            <span class="text-[10px] text-blue-400 font-bold uppercase">${servidorExibir}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="prepararEdicao('${id}', '${nomeExibir}', '${servidorExibir}')" class="p-2 text-zinc-500 hover:text-white transition">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="remover('${id}')" class="p-2 text-zinc-500 hover:text-red-500 transition">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     </div>
                 `;
             });
         });
 
-        // FUNÇÃO DE BUSCA
         window.filtrar = () => {
-            const query = document.getElementById('busca').value.toLowerCase();
-            const cards = document.querySelectorAll('#lista > div');
-            cards.forEach(card => {
-                card.style.display = card.innerText.toLowerCase().includes(query) ? 'flex' : 'none';
+            const q = document.getElementById('busca').value.toLowerCase();
+            document.querySelectorAll('#lista > div').forEach(c => {
+                c.style.display = c.innerText.toLowerCase().includes(q) ? 'flex' : 'none';
             });
         };
     </script>
